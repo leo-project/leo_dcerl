@@ -1,0 +1,8 @@
+{application, leo_dcerl,
+  [{description, "Erlang disk based SSD-Aware caching library"},
+   {mod, {leo_dcerl, []}},
+   {vsn, "0.4.1"},
+   {modules, [leo_dcerl, leo_dcerl_app, leo_dcerl_sup, leo_dcerl_server, lru]},
+   {registered, []},
+   {applications, [kernel, stdlib]}
+  ]}.
