@@ -1,5 +1,10 @@
 .eunit
 deps
+ebin
+priv
+c_src/libcutil
+rebar
+*.swp
 *.o
 *.beam
 *.plt
