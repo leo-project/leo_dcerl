@@ -30,7 +30,8 @@
 
 -export([start/4, stop/1]).
 -export([stats/1]).
--export([put/3, put_begin/2, put_chunk/3, put_end/3, remove/2, get/2, get_chunk/2, delete/1]).
+-export([put/3, put_begin/2, put_chunk/3, put_end/4]).
+-export([remove/2, get/2, get_filepath/2, get_chunk/2, delete/1]).
 
 -define(SUFFIX_TMP, ".tmp").
 -define(SUFFIX_BAK, ".bak").
@@ -58,7 +59,7 @@ start(DataDir, JournalDir, MaxSize, ChunkSize)
           journaldir_path   = JournalDir,
           datadir_path      = DataDir,
           ongoing_keys      = sets:new(),
-          datafile_sizes    = dict:new(),
+          cache_metas       = dict:new(),
           cache_stats       = #cache_stats{},
           max_cache_size    = MaxSize,
           chunk_size        = ChunkSize,
@@ -97,7 +98,7 @@ put(#dcerl_state{cache_entries     = CE,
                  cache_stats       = CS,
                  datadir_path      = DataDir,
                  ongoing_keys      = OnKeys,
-                 datafile_sizes    = FileSizes,
+                 cache_metas       = Metas,
                  redundant_op_cnt  = OpCnt,
                  journalfile_iodev = IoDev} = State, BinKey, Val) ->
     try
@@ -113,27 +114,27 @@ put(#dcerl_state{cache_entries     = CE,
                       true -> 0;
                       false -> 1
                   end,
-        OldSize = case dict:find(BinKey, FileSizes) of
-                      {ok, Size} -> Size;
+        OldSize = case dict:find(BinKey, Metas) of
+                      {ok, Meta} -> Meta#cache_meta.size;
                       _ -> 0
                   end,
         DiffSize = erlang:size(Val) - OldSize,
         ok = file:write_file(TmpDP, Val),
         %% commit(rename AND write to journal)
         ok = file:rename(TmpDP, DP),
-        %% @TODO write MD5 to journal
-        CommitLine = io_lib:format("~s ~s ~B~n",[?JOURNAL_OP_CLEAN, StrKey, erlang:size(Val)]),
+        %% write default meta data to journal
+        CommitLine = io_lib:format("~s ~s ~B NULL 0 0~n",[?JOURNAL_OP_CLEAN, StrKey, erlang:size(Val)]),
         ok = file:write(IoDev, CommitLine),
         OnKeys3 = sets:del_element(BinKey, OnKeys2),
-        FileSizes2 = dict:store(BinKey, erlang:size(Val), FileSizes),
-        ok = lru:put(CE, BinKey, <<>>),% @TODO MD5 received from arguments
+        Metas2 = dict:store(BinKey, #cache_meta{size = erlang:size(Val)}, Metas),
+        ok = lru:put(CE, BinKey, <<>>),
         Puts = CS#cache_stats.puts,
         PrevSize = CS#cache_stats.cached_size,
         PrevRec = CS#cache_stats.records,
         NewState = State#dcerl_state
             {redundant_op_cnt = OpCnt + 1,
              ongoing_keys     = OnKeys3,
-             datafile_sizes   = FileSizes2,
+             cache_metas      = Metas2,
              cache_stats      = CS#cache_stats
              {puts        = Puts + 1,
               records     = PrevRec + DiffRec,
@@ -189,17 +190,20 @@ put_chunk(_State, #dcerl_fd{tmp_datafile_iodev = TmpIoDev} = _Fd, Chunk) ->
 
 %%
 %% @doc
--spec(put_end(#dcerl_state{}, #dcerl_fd{}, Commit::boolean()) ->
+-spec(put_end(#dcerl_state{}, #dcerl_fd{}, #cache_meta{}, Commit::boolean()) ->
              {ok, #dcerl_state{}}|{error, any()}).
 put_end(#dcerl_state{cache_entries     = CE,
                      cache_stats       = CS,
                      datadir_path      = DataDir,
-                     datafile_sizes    = FileSizes,
+                     cache_metas       = Metas,
                      ongoing_keys      = OnKeys,
                      redundant_op_cnt  = OpCnt,
                      journalfile_iodev = IoDev} = State,
         #dcerl_fd{tmp_datafile_iodev = TmpIoDev,
-                  key                = BinKey} = _Fd, true) ->
+                  key                = BinKey} = _Fd, 
+        #cache_meta{md5          = MD5,
+                    mtime        = MTime,
+                    content_type = ContentType} = _CM , true) ->
     try
         _ = file:close(TmpIoDev),
         DP = data_filename(DataDir, BinKey),
@@ -208,27 +212,34 @@ put_end(#dcerl_state{cache_entries     = CE,
                       true -> 0;
                       false -> 1
                   end,
-        OldSize = case dict:find(BinKey, FileSizes) of
-                      {ok, Size} -> Size;
+        OldSize = case dict:find(BinKey, Metas) of
+                      {ok, Meta} -> Meta#cache_meta.size;
                       _ -> 0
                   end,
         NewSize = filelib:file_size(TmpDP),
         DiffSize = NewSize - OldSize,
         ok = file:rename(TmpDP, DP),
         StrKey = filename_bin2str(BinKey),
-        %% @TODO write MD5 to journal
-        CommitLine = io_lib:format("~s ~s ~B~n",[?JOURNAL_OP_CLEAN, StrKey, NewSize]),
+        CommitLine = io_lib:format("~s ~s ~B ~s ~B ~B~n",
+                                   [?JOURNAL_OP_CLEAN, StrKey, NewSize, ContentType, MD5, MTime]),
         ok = file:write(IoDev, CommitLine),
         OnKeys2 = sets:del_element(BinKey, OnKeys),
-        FileSizes2 = dict:store(BinKey, NewSize, FileSizes),
-        ok = lru:put(CE, BinKey, <<>>),% @TODO MD5 received from arguments
+        NewMeta = #cache_meta{
+                    size         = NewSize,
+                    md5          = MD5,
+                    mtime        = MTime,
+                    content_type = ContentType,
+                    file_path    = DP
+                },
+        Metas2 = dict:store(BinKey, NewMeta, Metas),
+        ok = lru:put(CE, BinKey, <<>>),
         Puts = CS#cache_stats.puts,
         PrevSize = CS#cache_stats.cached_size,
         PrevRec = CS#cache_stats.records,
         NewState = State#dcerl_state
             {redundant_op_cnt = OpCnt + 1,
              ongoing_keys     = OnKeys2,
-             datafile_sizes   = FileSizes2,
+             cache_metas      = Metas2,
              cache_stats      = CS#cache_stats
              {puts        = Puts + 1,
               records     = PrevRec + DiffRec,
@@ -249,7 +260,7 @@ put_end(#dcerl_state{datadir_path      = DataDir,
                      ongoing_keys      = OnKeys,
                      redundant_op_cnt  = OpCnt} = State,
         #dcerl_fd{tmp_datafile_iodev = TmpIoDev,
-                  key                = BinKey} = _Fd, false) ->
+                  key                = BinKey} = _Fd, _CM, false) ->
     try
         _ = file:close(TmpIoDev),
         DP = data_filename(DataDir, BinKey),
@@ -279,15 +290,15 @@ remove(#dcerl_state{cache_entries     = CE,
                     cache_stats       = CS,
                     datadir_path      = DataDir,
                     ongoing_keys      = OnKeys,
-                    datafile_sizes    = FileSizes,
+                    cache_metas       = Metas,
                     redundant_op_cnt  = OpCnt,
                     journalfile_iodev = IoDev} = State, BinKey) ->
     DP = data_filename(DataDir, BinKey),
     case filelib:is_regular(DP) of
         true ->
             try
-                DiffSize = case dict:find(BinKey, FileSizes) of
-                               {ok, Size} -> Size;
+                DiffSize = case dict:find(BinKey, Metas) of
+                               {ok, Meta} -> Meta#cache_meta.size;
                                _ -> 0
                            end,
                 ok = file:delete(DP),
@@ -295,7 +306,7 @@ remove(#dcerl_state{cache_entries     = CE,
                 Line = io_lib:format("~s ~s~n",[?JOURNAL_OP_REMOVE, StrKey]),
                 ok = file:write(IoDev, Line),
                 OnKeys2 = sets:del_element(BinKey, OnKeys),
-                FileSizes2 = dict:erase(BinKey, FileSizes),
+                Metas2 = dict:erase(BinKey, Metas),
                 ok = lru:remove(CE, BinKey),
                 Dels = CS#cache_stats.dels,
                 PrevSize = CS#cache_stats.cached_size,
@@ -303,7 +314,7 @@ remove(#dcerl_state{cache_entries     = CE,
                 NewState = State#dcerl_state
                     {redundant_op_cnt = OpCnt + 1,
                      ongoing_keys     = OnKeys2,
-                     datafile_sizes   = FileSizes2,
+                     cache_metas      = Metas2,
                      cache_stats      = CS#cache_stats
                      {dels        = Dels + 1,
                       records     = PrevRec - 1,
@@ -333,15 +344,15 @@ get(#dcerl_state{journalfile_iodev = undefined} = _State, _Key) ->
 get(#dcerl_state{cache_entries     = CE,
                  cache_stats       = CS,
                  datadir_path      = DataDir,
-                 datafile_sizes    = FileSizes,
+                 cache_metas       = Metas,
                  chunk_size        = ChunkSize,
                  redundant_op_cnt  = OpCnt,
                  journalfile_iodev = IoDev} = State, BinKey) ->
     case lru:get(CE, BinKey) of
-        {ok, _MD5} ->
+        {ok, _} ->
             try
-                Chunked = case dict:find(BinKey, FileSizes) of
-                              {ok, Size} -> Size > ChunkSize;
+                Chunked = case dict:find(BinKey, Metas) of
+                              {ok, Meta} -> Meta#cache_meta.size > ChunkSize;
                               _ -> false
                           end,
                 case Chunked of
@@ -372,6 +383,55 @@ get(#dcerl_state{cache_entries     = CE,
                     error_logger:error_msg("~p,~p,~p,~p~n",
                                            [{module, ?MODULE_STRING},
                                             {function, "get/2"},
+                                            {line, ?LINE},
+                                            {body, Reason}]),
+                    {error, Reason}
+            end;
+        _ ->
+            Gets = CS#cache_stats.gets,
+            {not_found, State#dcerl_state{
+                          cache_stats = CS#cache_stats{
+                                          gets = Gets + 1}}}
+    end.
+
+-spec(get_filepath(#dcerl_state{}, BinKey::binary()) ->
+             {ok, #dcerl_state{}, #cache_meta{}}|
+             {error, any()}).
+get_filepath(#dcerl_state{
+                 cache_entries     = CE,
+                 cache_stats       = CS,
+                 cache_metas       = Metas,
+                 redundant_op_cnt  = OpCnt,
+                 journalfile_iodev = IoDev} = State, BinKey) ->
+    case lru:get(CE, BinKey) of
+        {ok, _} ->
+            try
+                case dict:find(BinKey, Metas) of
+                    {ok, Meta} ->
+                        StrKey = filename_bin2str(BinKey),
+                        Line = io_lib:format("~s ~s~n",[?JOURNAL_OP_READ, StrKey]),
+                        ok = file:write(IoDev, Line),
+                        Gets = CS#cache_stats.gets,
+                        Hits = CS#cache_stats.hits,
+                        NewState = State#dcerl_state
+                            {redundant_op_cnt = OpCnt + 1,
+                             cache_stats      = CS#cache_stats
+                             {gets = Gets + 1,
+                              hits = Hits + 1}},
+                        {ok, TrimedState} = trim_to_size(NewState),
+                        {ok, RebuildState} = journal_rebuild_as_need(TrimedState),
+                        {ok, RebuildState, Meta};
+                    _ ->
+                        Gets = CS#cache_stats.gets,
+                        {not_found, State#dcerl_state{
+                                    cache_stats = CS#cache_stats{
+                                           gets = Gets + 1}}}
+                end
+            catch
+                error:Reason ->
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING},
+                                            {function, "get_filepath/2"},
                                             {line, ?LINE},
                                             {body, Reason}]),
                     {error, Reason}
@@ -492,7 +552,7 @@ trim_to_size(#dcerl_state{cache_stats =
     {ok, State};
 trim_to_size(State, not_found) ->
     {ok, State};
-trim_to_size(#dcerl_state{cache_entries = CE} = State, {ok, BinKey, _BinMD5}) ->
+trim_to_size(#dcerl_state{cache_entries = CE} = State, {ok, BinKey, _}) ->
     {ok, NewState} = remove(State, BinKey),
     trim_to_size(NewState, lru:eldest(CE)).
 
@@ -526,10 +586,11 @@ journal_read_line(#dcerl_state{journalfile_iodev = IoDev} = DState) ->
     Line = file:read_line(IoDev),
     journal_read_line(DState, Line).
 
-journal_read_line(#dcerl_state{journalfile_iodev = IoDev,
+journal_read_line(#dcerl_state{datadir_path      = DataDir,
+                               journalfile_iodev = IoDev,
                                redundant_op_cnt  = OpCnt,
                                ongoing_keys      = OnKeys,
-                               datafile_sizes    = FileSizes,
+                               cache_metas       = Metas,
                                cache_entries     = CE} = DState,
                   {ok, Line}) ->
     [Op,StrKey|Rest]= string:tokens(Line, ?JOURNAL_SEP),
@@ -537,15 +598,15 @@ journal_read_line(#dcerl_state{journalfile_iodev = IoDev,
     case Op of
         ?JOURNAL_OP_REMOVE ->
             lru:remove(CE, BinKey),
-            FileSizes2 = dict:erase(BinKey, FileSizes),
+            Metas2 = dict:erase(BinKey, Metas),
             journal_read_line(DState#dcerl_state{
-                                datafile_sizes   = FileSizes2,
+                                cache_metas      = Metas2,
                                 redundant_op_cnt = OpCnt + 1},
                               file:read_line(IoDev));
         _ ->
             case lru:get(CE, BinKey) of
                 not_found ->
-                    lru:put(CE, BinKey, <<>>);% @TODO MD5 retrieved from journal file
+                    lru:put(CE, BinKey, <<>>);
                 _ -> void
             end,
             case Op of
@@ -556,12 +617,19 @@ journal_read_line(#dcerl_state{journalfile_iodev = IoDev,
                         ongoing_keys     = sets:add_element(BinKey, OnKeys)},
                       file:read_line(IoDev));
                 ?JOURNAL_OP_CLEAN ->
-                    Size = list_to_integer(hd(Rest)),
-                    FileSizes2 = dict:store(BinKey, Size, FileSizes),
+                    [Size, ContentType, MD5, MTime|_Rest2]= Rest,
+                    NewMeta = #cache_meta{
+                        size         = list_to_integer(Size),
+                        md5          = list_to_integer(MD5),
+                        mtime        = list_to_integer(MTime),
+                        content_type = ContentType,
+                        file_path    = data_filename(DataDir, BinKey)
+                    },
+                    Metas2 = dict:store(BinKey, NewMeta, Metas),
                     journal_read_line(
                       DState#dcerl_state{
                         redundant_op_cnt = OpCnt + 1,
-                        datafile_sizes   = FileSizes2,
+                        cache_metas      = Metas2,
                         ongoing_keys     = sets:del_element(BinKey, OnKeys)},
                       file:read_line(IoDev));
                 ?JOURNAL_OP_READ ->
@@ -594,8 +662,8 @@ journal_process(#dcerl_state{cache_entries = CE} = DState, ok) ->
 journal_process_2(#dcerl_state{cache_entries   = CE,
                                cache_stats     = CS,
                                datadir_path    = DataDir,
-                               datafile_sizes  = FileSizes,
-                               ongoing_keys    = Keys} = DState, {ok, BinKey, _BinMD5}) ->
+                               cache_metas     = Metas,
+                               ongoing_keys    = Keys} = DState, {ok, BinKey, _}) ->
     case sets:is_element(BinKey, Keys) of
         true ->
             NewKeys = sets:del_element(BinKey, Keys),
@@ -608,8 +676,8 @@ journal_process_2(#dcerl_state{cache_entries   = CE,
         false ->
             PrevSize = CS#cache_stats.cached_size,
             PrevRec = CS#cache_stats.records,
-            NewSize = case dict:find(BinKey, FileSizes) of
-                          {ok, Size} -> Size + PrevSize;
+            NewSize = case dict:find(BinKey, Metas) of
+                          {ok, Meta} -> Meta#cache_meta.size + PrevSize;
                           _ -> PrevSize
                       end,
             journal_process_2(DState#dcerl_state{
@@ -691,19 +759,25 @@ journal_rebuild(#dcerl_state{journalfile_iodev = IoDev} = DState) ->
 journal_rebuild_write_line(
   #dcerl_state{cache_entries     = CE,
                journalfile_iodev = IoDev,
-               datafile_sizes    = FileSizes,
-               ongoing_keys      = Keys} = DState, {ok, BinKey, _BinMD5}) ->
+               cache_metas       = Metas,
+               ongoing_keys      = Keys} = DState, {ok, BinKey, _}) ->
     StrKey = filename_bin2str(BinKey),
     case sets:is_element(BinKey, Keys) of
         true ->
             ok = file:write(IoDev, io_lib:format("~s ~s~n",[?JOURNAL_OP_DIRTY, StrKey]));
         false ->
-            NewSize = case dict:find(BinKey, FileSizes) of
-                          {ok, Size} -> Size;
+            NewMeta = case dict:find(BinKey, Metas) of
+                          {ok, Meta} -> Meta;
                           _ -> 0
                       end,
-            %% @TODO write MD5 to journal
-            Line = io_lib:format("~s ~s ~B~n",[?JOURNAL_OP_CLEAN, StrKey, NewSize]),
+            %% write cache meta data to journal
+            Line = io_lib:format("~s ~s ~B ~s ~B ~B~n",
+                                 [?JOURNAL_OP_CLEAN, StrKey,
+                                  NewMeta#cache_meta.size,
+                                  NewMeta#cache_meta.content_type,
+                                  NewMeta#cache_meta.md5,
+                                  NewMeta#cache_meta.mtime
+                                 ]),
             ok = file:write(IoDev, Line)
     end,
     journal_rebuild_write_line(DState, lru:iterator_next(CE));

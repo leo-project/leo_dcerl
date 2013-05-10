@@ -80,7 +80,11 @@ normal_test() ->
     ok = leo_dcerl_server:put(Id, Ref, BinKey, Chunk),
     ok = leo_dcerl_server:put(Id, Ref, BinKey, Chunk),
     ok = leo_dcerl_server:put(Id, Ref, BinKey, Chunk),
-    ok = leo_dcerl_server:put_end_tran(Id, Ref, BinKey, true),
+    CM = #cache_meta{
+            md5 = 1,
+            mtime = 123,
+            content_type = "image/jpeg"},
+    ok = leo_dcerl_server:put_end_tran(Id, Ref, BinKey, CM, true),
 
     {ok, CS3} = leo_dcerl_server:stats(Id),
     ?assertEqual(2, CS3#cache_stats.puts),
@@ -93,14 +97,20 @@ normal_test() ->
     {ok, Ref2}= leo_dcerl_server:get_ref(Id, BinKey),
     ok = get_chunked(Id, Ref2, BinKey, Chunk),
 
+    {ok, CM2} = leo_dcerl_server:get_filepath(Id, BinKey),
+    ?assertEqual(128*3, CM2#cache_meta.size),
+    ?assertEqual(1, CM2#cache_meta.md5),
+    ?assertEqual(123, CM2#cache_meta.mtime),
+    ?assertEqual("image/jpeg", CM2#cache_meta.content_type),
+
     {ok, Items} = leo_dcerl_server:items(Id),
     {ok, Size}  = leo_dcerl_server:size(Id),
     ?assertEqual(1, Items),
     ?assertEqual((128*3), Size),
 
     {ok, CS4} = leo_dcerl_server:stats(Id),
-    ?assertEqual(3, CS4#cache_stats.gets),
-    ?assertEqual(3, CS4#cache_stats.hits),
+    ?assertEqual(4, CS4#cache_stats.gets),
+    ?assertEqual(4, CS4#cache_stats.hits),
     ?assertEqual(1, CS4#cache_stats.records),
     ok = leo_dcerl_server:delete(Id, BinKey),
     ok.

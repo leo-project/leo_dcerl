@@ -1,5 +1,13 @@
 -author('yoshiyuki.kanno@stoic.co.jp').
 
+-record(cache_meta, {
+    size         = 0  :: non_neg_integer(),
+    md5          = 0  :: integer(),
+    mtime        = 0  :: non_neg_integer(),
+    content_type = "" :: string(),
+    file_path    = "" :: file:name_all()
+}).
+
 -record(cache_stats, {
     gets        = 0 :: non_neg_integer(),
     puts        = 0 :: non_neg_integer(),
@@ -24,7 +32,7 @@
     chunk_size        = 64 :: pos_integer(),
     redundant_op_cnt  = 0  :: non_neg_integer(),
     ongoing_keys           :: set(),
-    datafile_sizes         :: dict(),
+    cache_metas            :: dict(),
     cache_stats            :: #cache_stats{},
     cache_entries          :: term() % NIF resource
 }).

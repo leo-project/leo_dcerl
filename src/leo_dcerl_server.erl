@@ -33,8 +33,8 @@
 
 %% API
 -export([start_link/5, stop/1,
-         get_ref/2, get/2, get/3,
-         put/3, put/4, put_begin_tran/2, put_end_tran/4,
+         get_filepath/2, get_ref/2, get/2, get/3,
+         put/3, put/4, put_begin_tran/2, put_end_tran/5,
          delete/2, stats/1, items/1, size/1]).
 
 %% gen_server callbacks
@@ -81,6 +81,12 @@ get_ref(Id, Key) ->
 get(Id, Key) ->
     gen_server:call(Id, {get, Key}).
 
+%% @doc Retrieve a value associated with a specified key
+%%
+-spec(get_filepath(atom(), binary()) ->
+             undefined | #cache_meta{} | {error, any()}).
+get_filepath(Id, Key) ->
+    gen_server:call(Id, {get_filepath, Key}).
 
 %% @doc Retrieve a value associated with a specified key
 %%
@@ -111,10 +117,10 @@ put_begin_tran(Id, Key) ->
 
 
 %% @doc End transaction of insert chunked objects
--spec(put_end_tran(atom(), any(), binary(), boolean()) ->
+-spec(put_end_tran(atom(), any(), binary(), #cache_meta{}, boolean()) ->
              ok | {error, any()}).
-put_end_tran(Id, Ref, Key, IsCommit) ->
-    gen_server:call(Id, {put_end_tran, Ref, Key, IsCommit}).
+put_end_tran(Id, Ref, Key, Meta, IsCommit) ->
+    gen_server:call(Id, {put_end_tran, Ref, Key, Meta, IsCommit}).
 
 
 %% @doc Remove a key-value pair by a specified key into the leo_dcerl
@@ -181,6 +187,33 @@ handle_call({get, Key}, _From, #state{handler    = Handler,
                     Error ->
                         {Error, State#state{handler = Handler1}}
                 end;
+            {not_found, Handler1} ->
+                {not_found, State#state{stats_gets = Gets + 1,
+                                        handler = Handler1}};
+            {'EXIT', Cause} ->
+                error_logger:error_msg("~p,~p,~p,~p~n",
+                                       [{module, ?MODULE_STRING},
+                                        {function, "handle_call/3"},
+                                        {line, ?LINE}, {body, Cause}]),
+                {{error, Cause}, State};
+            {error, Cause} ->
+                error_logger:error_msg("~p,~p,~p,~p~n",
+                                       [{module, ?MODULE_STRING},
+                                        {function, "handle_call/3"},
+                                        {line, ?LINE}, {body, Cause}]),
+                {{error, Cause}, State}
+        end,
+    {reply, Res, NewState};
+
+handle_call({get_filepath, Key}, _From, #state{handler    = Handler,
+                                      stats_gets = Gets,
+                                      stats_hits = Hits} = State) ->
+    {Res, NewState} =
+        case catch leo_dcerl:get_filepath(Handler, Key) of
+            {ok, Handler1, Ret} ->
+                {{ok, Ret}, State#state{stats_gets = Gets + 1,
+                                        stats_hits = Hits + 1,
+                                        handler = Handler1}};
             {not_found, Handler1} ->
                 {not_found, State#state{stats_gets = Gets + 1,
                                         handler = Handler1}};
@@ -288,10 +321,10 @@ handle_call({put_begin_tran, Key}, _From, #state{handler = Handler} = State) ->
         end,
     {reply, Res, NewState};
 
-handle_call({put_end_tran, Ref,_Key, IsCommit}, _From, #state{handler = Handler,
+handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = Handler,
                                                               stats_puts = Puts} = State) ->
     {Res, NewState} =
-        case catch leo_dcerl:put_end(Handler, Ref, IsCommit) of
+        case catch leo_dcerl:put_end(Handler, Ref, Meta, IsCommit) of
             {ok, Handler2} ->
                 {ok, State#state{handler = Handler2,
                                  stats_puts = Puts + 1}};
