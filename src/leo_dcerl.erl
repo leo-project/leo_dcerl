@@ -200,7 +200,7 @@ put_end(#dcerl_state{cache_entries     = CE,
                      redundant_op_cnt  = OpCnt,
                      journalfile_iodev = IoDev} = State,
         #dcerl_fd{tmp_datafile_iodev = TmpIoDev,
-                  key                = BinKey} = _Fd, 
+                  key                = BinKey} = _Fd,
         #cache_meta{md5          = MD5,
                     mtime        = MTime,
                     content_type = ContentType} = _CM , true) ->
@@ -225,12 +225,12 @@ put_end(#dcerl_state{cache_entries     = CE,
         ok = file:write(IoDev, CommitLine),
         OnKeys2 = sets:del_element(BinKey, OnKeys),
         NewMeta = #cache_meta{
-                    size         = NewSize,
-                    md5          = MD5,
-                    mtime        = MTime,
-                    content_type = ContentType,
-                    file_path    = DP
-                },
+          size         = NewSize,
+          md5          = MD5,
+          mtime        = MTime,
+          content_type = ContentType,
+          file_path    = DP
+         },
         Metas2 = dict:store(BinKey, NewMeta, Metas),
         ok = lru:put(CE, BinKey, <<>>),
         Puts = CS#cache_stats.puts,
@@ -398,11 +398,11 @@ get(#dcerl_state{cache_entries     = CE,
              {ok, #dcerl_state{}, #cache_meta{}}|
              {error, any()}).
 get_filepath(#dcerl_state{
-                 cache_entries     = CE,
-                 cache_stats       = CS,
-                 cache_metas       = Metas,
-                 redundant_op_cnt  = OpCnt,
-                 journalfile_iodev = IoDev} = State, BinKey) ->
+                cache_entries     = CE,
+                cache_stats       = CS,
+                cache_metas       = Metas,
+                redundant_op_cnt  = OpCnt,
+                journalfile_iodev = IoDev} = State, BinKey) ->
     case lru:get(CE, BinKey) of
         {ok, _} ->
             try
@@ -424,8 +424,8 @@ get_filepath(#dcerl_state{
                     _ ->
                         Gets = CS#cache_stats.gets,
                         {not_found, State#dcerl_state{
-                                    cache_stats = CS#cache_stats{
-                                           gets = Gets + 1}}}
+                                      cache_stats = CS#cache_stats{
+                                                      gets = Gets + 1}}}
                 end
             catch
                 error:Reason ->
@@ -619,12 +619,12 @@ journal_read_line(#dcerl_state{datadir_path      = DataDir,
                 ?JOURNAL_OP_CLEAN ->
                     [Size, ContentType, MD5, MTime|_Rest2]= Rest,
                     NewMeta = #cache_meta{
-                        size         = list_to_integer(Size),
-                        md5          = list_to_integer(MD5),
-                        mtime        = list_to_integer(MTime),
-                        content_type = ContentType,
-                        file_path    = data_filename(DataDir, BinKey)
-                    },
+                      size         = list_to_integer(Size),
+                      md5          = list_to_integer(MD5),
+                      mtime        = list_to_integer(MTime),
+                      content_type = ContentType,
+                      file_path    = data_filename(DataDir, BinKey)
+                     },
                     Metas2 = dict:store(BinKey, NewMeta, Metas),
                     journal_read_line(
                       DState#dcerl_state{

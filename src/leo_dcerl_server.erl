@@ -206,8 +206,8 @@ handle_call({get, Key}, _From, #state{handler    = Handler,
     {reply, Res, NewState};
 
 handle_call({get_filepath, Key}, _From, #state{handler    = Handler,
-                                      stats_gets = Gets,
-                                      stats_hits = Hits} = State) ->
+                                               stats_gets = Gets,
+                                               stats_hits = Hits} = State) ->
     {Res, NewState} =
         case catch leo_dcerl:get_filepath(Handler, Key) of
             {ok, Handler1, Ret} ->
@@ -277,7 +277,7 @@ handle_call({put, Key, Val}, _From, #state{handler = Handler,
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
                 {{error, Cause}, State}
-                           end,
+        end,
     {reply, Res, NewState};
 
 
@@ -322,7 +322,7 @@ handle_call({put_begin_tran, Key}, _From, #state{handler = Handler} = State) ->
     {reply, Res, NewState};
 
 handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = Handler,
-                                                              stats_puts = Puts} = State) ->
+                                                                     stats_puts = Puts} = State) ->
     {Res, NewState} =
         case catch leo_dcerl:put_end(Handler, Ref, Meta, IsCommit) of
             {ok, Handler2} ->
@@ -438,16 +438,16 @@ get_chunk_sub(Handler, Ref, Acc) ->
               {ok, Handler2, _Ref, Value, true} ->
                   {ok, {Handler2, Value, true}};
               {'EXIT', Cause} ->
-                error_logger:error_msg("~p,~p,~p,~p~n",
-                                       [{module, ?MODULE_STRING},
-                                        {function, "get_chunk_sub/3"},
-                                        {line, ?LINE}, {body, Cause}]),
+                  error_logger:error_msg("~p,~p,~p,~p~n",
+                                         [{module, ?MODULE_STRING},
+                                          {function, "get_chunk_sub/3"},
+                                          {line, ?LINE}, {body, Cause}]),
                   {error, Cause};
               {error, Cause} ->
-                error_logger:error_msg("~p,~p,~p,~p~n",
-                                       [{module, ?MODULE_STRING},
-                                        {function, "get_chunk_sub/3"},
-                                        {line, ?LINE}, {body, Cause}]),
+                  error_logger:error_msg("~p,~p,~p,~p~n",
+                                         [{module, ?MODULE_STRING},
+                                          {function, "get_chunk_sub/3"},
+                                          {line, ?LINE}, {body, Cause}]),
                   {error, Cause}
           end,
 
