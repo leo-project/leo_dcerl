@@ -44,7 +44,11 @@ normal_test() ->
     ok  = leo_dcerl:put_chunk(DS6, FD, Chunk),
     ok  = leo_dcerl:put_chunk(DS6, FD, Chunk),
     ok  = leo_dcerl:put_chunk(DS6, FD, Chunk),
-    {ok, DS7} = leo_dcerl:put_end(DS6, FD, true),
+    CM = #cache_meta{
+            md5 = 1,
+            mtime = 123,
+            content_type = "image/jpeg"},
+    {ok, DS7} = leo_dcerl:put_end(DS6, FD, CM, true),
     {ok, CS3} = leo_dcerl:stats(DS7),
     ?assertEqual(2, CS3#cache_stats.puts),
     ?assertEqual(1, CS3#cache_stats.records),
@@ -54,7 +58,16 @@ normal_test() ->
     ?assertEqual(2, CS4#cache_stats.gets),
     ?assertEqual(2, CS4#cache_stats.hits),
     ?assertEqual(1, CS4#cache_stats.records),
-    {ok, _} = leo_dcerl:delete(DS9),
+    {ok, DS10, CM2} = leo_dcerl:get_filepath(DS9, BinKey),
+    ?assertEqual(128*3, CM2#cache_meta.size),
+    ?assertEqual(1, CM2#cache_meta.md5),
+    ?assertEqual(123, CM2#cache_meta.mtime),
+    ?assertEqual("image/jpeg", CM2#cache_meta.content_type),
+    {ok, CS5} = leo_dcerl:stats(DS10),
+    ?assertEqual(3, CS5#cache_stats.gets),
+    ?assertEqual(3, CS5#cache_stats.hits),
+    ?assertEqual(1, CS5#cache_stats.records),
+    {ok, _} = leo_dcerl:delete(DS10),
     ok.
 
 roll_test() ->
