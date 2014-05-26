@@ -1,0 +1,22 @@
+## Dialyzer - Ignore warnings
+##
+##
+## leo_dcerl_server
+##
+The inferred return type of init/1 ({'stop',_,'null'}) has nothing in common with 'ignore' | {'ok',_} | {'stop',_} | {'ok',_,'hibernate' | 'infinity' | non_neg_integer()}, which is the expected return type for the callback of gen_server behaviour
+The pattern {'ok', Handler} can never match the type {'error',_}
+##
+## leo_dcerl
+##
+Function trim_to_size/2 will never be called
+Function journal_read/1 will never be called
+Function journal_read_line/1 will never be called
+Function journal_read_line/2 will never be called
+Function journal_process/1 will never be called
+Function journal_process/2 will never be called
+Function journal_process_2/2 will never be called
+Function journal_rebuild_as_need/1 will never be called
+Function journal_rebuild/1 will never be called
+Function journal_rebuild_write_line/2 will never be called
+Function filename_str2bin/1 will never be called
+Function delete_file/1 will never be called
