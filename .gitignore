@@ -8,5 +8,5 @@ c_src/libcutil
 *.beam
 *.plt
 .leo_dcerl_dialyzer_plt
-dialyzer.ignore-warnings
 leo_dcerl.dot
+leo_dcerl.png
