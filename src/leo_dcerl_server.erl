@@ -41,7 +41,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {handler,
+-record(state, {handler :: #dcerl_state{},
                 total_cache_size = 0 :: integer(),
                 stats_gets       = 0 :: integer(),
                 stats_puts       = 0 :: integer(),
@@ -54,6 +54,8 @@
 %%--------------------------------------------------------------------
 %% Function: {ok,Pid} | ignore | {error, Error}
 %% Description: Starts the server.
+-spec start_link(atom(), string(), string(), integer(), integer()) ->
+                        'ignore' | {'error',_} | {'ok',pid()}.
 start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
     gen_server:start_link({local, Id}, ?MODULE,
                           [DataDir, JournalDir, CacheSize, ChunkSize], []).
@@ -63,7 +65,6 @@ start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
 %% Description: Manually stops the server.
 stop(Pid) ->
     gen_server:cast(Pid, stop).
-
 
 
 %% @doc Retrieve a reference
@@ -155,9 +156,13 @@ size(Id) ->
 %% GEN_SERVER CALLBACKS
 %%====================================================================
 init([DataDir, JournalDir, CacheSize, ChunkSize]) ->
-    {ok, Handler} = leo_dcerl:start(DataDir, JournalDir, CacheSize, ChunkSize),
-    {ok, #state{total_cache_size = CacheSize,
-                handler          = Handler}}.
+    case leo_dcerl:start(DataDir, JournalDir, CacheSize, ChunkSize) of
+        {ok, Handler} ->
+            {ok, #state{total_cache_size = CacheSize,
+                        handler          = Handler}};
+        {error, Cause} ->
+            {stop, Cause, null}
+    end.
 
 handle_call({get_ref, Key}, _From, #state{handler = Handler} = State) ->
     {Res, NewState} =

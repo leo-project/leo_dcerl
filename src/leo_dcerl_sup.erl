@@ -85,5 +85,9 @@ stop() ->
 %% @private
 init([TotalCacheSize]) ->
     {ok, {{one_for_one, ?MAX_RESTART, ?MAX_TIME},
-          [{leo_dcerl_server, {leo_dcerl_server, start_link, [TotalCacheSize]},
-            permanent, ?SHUTDOWN_WAITING_TIME, worker, [leo_dcerl_server]}]}}.
+          [{leo_dcerl_server,
+            {leo_dcerl_server, start_link, [TotalCacheSize]},
+            permanent,
+            ?SHUTDOWN_WAITING_TIME,
+            worker,
+            [leo_dcerl_server]}]}}.

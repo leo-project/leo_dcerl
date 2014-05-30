@@ -25,9 +25,9 @@
 %%======================================================================
 -module(lru).
 
+-on_load(init/0).
 -export([start/0, put/3, get/2, remove/2, eldest/1, items/1, stop/1]).
 -export([iterator/1, iterator_next/1]).
--on_load(init/0).
 
 
 %% @doc Initialize
@@ -72,6 +72,7 @@ put(_Res, _Key, _Val) ->
 get(_Res, _Key) ->
     exit(nif_library_not_loaded).
 
+
 %% @doc Remove an object from the lru
 %%
 -spec(remove(any(), binary()) ->
@@ -87,15 +88,22 @@ remove(_Res, _Key) ->
 eldest(_Res) ->
     exit(nif_library_not_loaded).
 
+
+%% @doc Halt the lru
+%%
 -spec(iterator(any()) ->
              {ok, binary(), binary()} | {error, any()}).
 iterator(_Res) ->
     exit(nif_library_not_loaded).
 
+
+%% @doc Halt the lru
+%%
 -spec(iterator_next(any()) ->
              {ok, binary(), binary()} | {error, any()}).
 iterator_next(_Res) ->
     exit(nif_library_not_loaded).
+
 
 %% @doc Retrieve total of cached objects
 %%

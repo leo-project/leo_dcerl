@@ -7,3 +7,6 @@ c_src/libcutil
 *.o
 *.beam
 *.plt
+.leo_dcerl_dialyzer_plt
+leo_dcerl.dot
+leo_dcerl.png
