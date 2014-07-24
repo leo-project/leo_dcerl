@@ -4,7 +4,7 @@
     size         = 0  :: non_neg_integer(),
     md5          = 0  :: integer(),
     mtime        = 0  :: non_neg_integer(),
-    content_type = "NULL" :: string(),
+    content_type = "NULL" :: string() | binary(),
     file_path    = "" :: file:name_all()
 }).
 
