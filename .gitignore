@@ -10,3 +10,4 @@ c_src/libcutil
 .leo_dcerl_dialyzer_plt
 leo_dcerl.dot
 leo_dcerl.png
+.rebar/
