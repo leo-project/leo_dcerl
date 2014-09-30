@@ -55,11 +55,11 @@
 %% Function: {ok,Pid} | ignore | {error, Error}
 %% Description: Starts the server.
 -spec(start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
-                        'ignore' | {'error',_} | {'ok',pid()} when Id::atom(),
-                                                                   DataDir::string(),
-                                                                   JournalDir::string(),
-                                                                   CacheSize::integer(),
-                                                                   ChunkSize::integer()).
+             'ignore' | {'error',_} | {'ok',pid()} when Id::atom(),
+                                                        DataDir::string(),
+                                                        JournalDir::string(),
+                                                        CacheSize::integer(),
+                                                        ChunkSize::integer()).
 start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
     gen_server:start_link({local, Id}, ?MODULE,
                           [DataDir, JournalDir, CacheSize, ChunkSize], []).
