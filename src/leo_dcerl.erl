@@ -37,9 +37,12 @@
 -define(SUFFIX_BAK, ".bak").
 
 %%
-%% @doc
--spec(start(string(), string(), integer(), integer()) ->
-             {ok, #dcerl_state{}} | {error, any()}).
+%% @doc Start a leo_dcerl erlang process with specified settings
+-spec(start(DataDir, JournalDir, MaxSize, ChunkSize) ->
+             {ok, #dcerl_state{}} | {error, any()} when DataDir::string(),
+                                                        JournalDir::string(),
+                                                        MaxSize::integer(),
+                                                        ChunkSize::integer()).
 start(DataDir, JournalDir, MaxSize, ChunkSize)
   when MaxSize > 0 andalso ChunkSize > 0 ->
     try
@@ -90,9 +93,11 @@ start(_, _, _, _) ->
     {error, badarg}.
 
 %%
-%% @doc
--spec(put(#dcerl_state{}, BinKey::binary(), Val::binary()) ->
-             {ok, #dcerl_state{}}|{error, any()}).
+%% @doc Put a key-value pair into the specified leo_dcerl erlang process
+-spec(put(State, Key, Val) ->
+             {ok, #dcerl_state{}}|{error, any()} when State::#dcerl_state{},
+                                                      Key::binary(),
+                                                      Val::binary()).
 put(#dcerl_state{journalfile_iodev = undefined} = _State, _Key, _Val) ->
     {error, badarg};
 put(#dcerl_state{cache_entries     = CE,
@@ -160,9 +165,11 @@ put(#dcerl_state{cache_entries     = CE,
     end.
 
 %%
-%% @doc
--spec(put_begin(#dcerl_state{}, BinKey::binary()) ->
-             {ok, #dcerl_state{}, #dcerl_fd{}}|{error, any()}).
+%% @doc Begin a transaction to put a large key-value pair
+%%      into the specified leo_dcerl erlang process
+-spec(put_begin(State, Key) ->
+             {ok, #dcerl_state{}, #dcerl_fd{}}|{error, any()} when State::#dcerl_state{},
+                                                                   Key::binary()).
 put_begin(#dcerl_state{journalfile_iodev = undefined} = _State, _Key) ->
     {error, badarg};
 put_begin(#dcerl_state{datadir_path      = DataDir,
@@ -190,16 +197,22 @@ put_begin(#dcerl_state{datadir_path      = DataDir,
     end.
 
 %%
-%% @doc
--spec(put_chunk(#dcerl_state{}, #dcerl_fd{}, Chunk::binary()) ->
-             ok|{error, any()}).
+%% @doc Put a chunk into the specified leo_dcerl erlang process while doing transaction
+-spec(put_chunk(State, Fd, Chunk) ->
+             ok|{error, any()} when State::#dcerl_state{},
+                                    Fd::#dcerl_fd{},
+                                    Chunk::binary()).
 put_chunk(_State, #dcerl_fd{tmp_datafile_iodev = TmpIoDev} = _Fd, Chunk) ->
     file:write(TmpIoDev, Chunk).
 
 %%
-%% @doc
--spec(put_end(#dcerl_state{}, #dcerl_fd{}, #cache_meta{}, Commit::boolean()) ->
-             {ok, #dcerl_state{}}|{error, any()}).
+%% @doc End a transaction to put a large key-value pair
+%%      into the specified leo_dcerl erlang process
+-spec(put_end(State, Fd, CM, Commit) ->
+             {ok, #dcerl_state{}}|{error, any()} when State::#dcerl_state{},
+                                                      Fd::#dcerl_fd{},
+                                                      CM::#cache_meta{},
+                                                      Commit::boolean()).
 put_end(#dcerl_state{cache_entries     = CE,
                      cache_stats       = CS,
                      datadir_path      = DataDir,
@@ -293,9 +306,10 @@ put_end(#dcerl_state{datadir_path      = DataDir,
     end.
 
 %%
-%% @doc
--spec(remove(#dcerl_state{}, BinKey::binary()) ->
-             {ok, #dcerl_state{}}|{error, any()}).
+%% @doc Remove a key-value pair from the specified leo_dcerl erlang process
+-spec(remove(State, Key) ->
+             {ok, #dcerl_state{}}|{error, any()} when State::#dcerl_state{},
+                                                      Key::binary()).
 remove(#dcerl_state{journalfile_iodev = undefined} = _State, _Key) ->
     {error, badarg};
 remove(#dcerl_state{cache_entries     = CE,
@@ -348,11 +362,13 @@ remove(#dcerl_state{cache_entries     = CE,
     end.
 
 %%
-%% @doc
--spec(get(#dcerl_state{}, BinKey::binary()) ->
+%% @doc Get a value corresponding with the specified key
+%%      from the specified leo_dcerl erlang process
+-spec(get(State, Key) ->
              {ok, #dcerl_state{}, binary()}|
              {ok, #dcerl_state{}, #dcerl_fd{}}|
-             {error, any()}).
+             {error, any()} when State::#dcerl_state{},
+                                 Key::binary()).
 get(#dcerl_state{journalfile_iodev = undefined} = _State, _Key) ->
     {error, badarg};
 get(#dcerl_state{cache_entries     = CE,
@@ -409,9 +425,12 @@ get(#dcerl_state{cache_entries     = CE,
                                           gets = Gets + 1}}}
     end.
 
--spec(get_filepath(#dcerl_state{}, BinKey::binary()) ->
+%% @doc Get a metadata AND status corresponding with the specified key
+%%      from the specified leo_dcerl erlang process
+-spec(get_filepath(State, Key) ->
              {ok, #dcerl_state{}, #cache_meta{}}|
-             {error, any()}).
+             {error, any()} when State::#dcerl_state{},
+                                 Key::binary()).
 get_filepath(#dcerl_state{
                 cache_entries     = CE,
                 cache_stats       = CS,
@@ -460,10 +479,12 @@ get_filepath(#dcerl_state{
     end.
 
 %%
-%% @doc
--spec(get_chunk(#dcerl_state{}, #dcerl_fd{}) ->
+%% @doc Get a chunk corresponding with the specified file descriptor
+%%      from the specified leo_dcerl erlang process
+-spec(get_chunk(State, Fd) ->
              {ok, #dcerl_state{}, #dcerl_fd{}, Chunk::binary(), Tail::boolean()}|
-             {error, any()}).
+             {error, any()} when State::#dcerl_state{},
+                                 Fd::#dcerl_fd{}).
 get_chunk(#dcerl_state{cache_stats       = CS,
                        chunk_size        = ChunkSize,
                        redundant_op_cnt  = OpCnt,
@@ -504,9 +525,10 @@ get_chunk(#dcerl_state{cache_stats       = CS,
     end.
 
 %%
-%% @doc
-%% dcerl:delete(Descriptor),
--spec(delete(#dcerl_state{}) -> {ok, #dcerl_state{}}|{error, any()}).
+%% @doc Delete all of key-value pairs
+%%      from the specified leo_dcerl erlang process
+-spec(delete(State) ->
+             {ok, #dcerl_state{}}|{error, any()} when State::#dcerl_state{}).
 delete(#dcerl_state{datadir_path      = DataDir,
                     journaldir_path   = JournalDir} = State) ->
     try
@@ -525,9 +547,9 @@ delete(#dcerl_state{datadir_path      = DataDir,
     end.
 
 %%
-%% @doc
-%% dcerl:stop(Descriptor),
--spec(stop(#dcerl_state{}) -> {ok, #dcerl_state{}}|{error, any()}).
+%% @doc Stop the specified leo_dcerl erlang process
+-spec(stop(State) ->
+             {ok, #dcerl_state{}}|{error, any()} when State::#dcerl_state{}).
 stop(#dcerl_state{journalfile_iodev = undefined} = State) ->
     {ok, State};
 stop(#dcerl_state{journalfile_iodev = IoDev} = State) ->
@@ -545,7 +567,9 @@ stop(#dcerl_state{journalfile_iodev = IoDev} = State) ->
             {error, Reason}
     end.
 
--spec(stats(#dcerl_state{}) -> {ok, #cache_stats{}}).
+%% @doc Get a status from the specified leo_dcerl erlang process
+-spec(stats(State) ->
+             {ok, #cache_stats{}} when State::#dcerl_state{}).
 stats(#dcerl_state{cache_stats = CS} = _State) ->
     {ok, CS}.
 
@@ -557,8 +581,8 @@ stats(#dcerl_state{cache_stats = CS} = _State) ->
 %%
 %% @doc
 %% @private
--spec(trim_to_size(#dcerl_state{}) ->
-             {ok, #dcerl_state{}}).
+-spec(trim_to_size(State) ->
+             {ok, #cache_stats{}} when State::#dcerl_state{}).
 trim_to_size(#dcerl_state{cache_entries = CE} = State) ->
     trim_to_size(State, lru:eldest(CE)).
 
@@ -577,7 +601,8 @@ trim_to_size(#dcerl_state{cache_entries = CE} = State, {ok, BinKey, _}) ->
 
 
 %% @private
--spec(journal_read(#dcerl_state{}) -> {ok, #dcerl_state{}}|{error, any()}).
+-spec(journal_read(State) ->
+             {ok, #dcerl_state{}}|{error, any()} when State::#dcerl_state{}).
 journal_read(#dcerl_state{journaldir_path = JD} = DState) ->
     JF = journal_filename(JD),
     case file:open(JF, [read, raw, read_ahead]) of

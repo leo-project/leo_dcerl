@@ -54,8 +54,12 @@
 %%--------------------------------------------------------------------
 %% Function: {ok,Pid} | ignore | {error, Error}
 %% Description: Starts the server.
--spec start_link(atom(), string(), string(), integer(), integer()) ->
-                        'ignore' | {'error',_} | {'ok',pid()}.
+-spec(start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
+             'ignore' | {'error',_} | {'ok',pid()} when Id::atom(),
+                                                        DataDir::string(),
+                                                        JournalDir::string(),
+                                                        CacheSize::integer(),
+                                                        ChunkSize::integer()).
 start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
     gen_server:start_link({local, Id}, ?MODULE,
                           [DataDir, JournalDir, CacheSize, ChunkSize], []).
@@ -63,91 +67,108 @@ start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
 
 %% Function: -> ok
 %% Description: Manually stops the server.
+-spec(stop(Pid) -> ok when Pid::atom()).
 stop(Pid) ->
     gen_server:cast(Pid, stop).
 
 
 %% @doc Retrieve a reference
 %%
--spec(get_ref(atom(), binary()) ->
-             undefined | binary() | {error, any()}).
+-spec(get_ref(Id, Key) ->
+             undefined | binary() | {error, any()} when Id::atom(),
+                                                        Key::binary()).
 get_ref(Id, Key) ->
     gen_server:call(Id, {get_ref, Key}).
 
 
 %% @doc Retrieve a value associated with a specified key
 %%
--spec(get(atom(), binary()) ->
-             undefined | binary() | {error, any()}).
+-spec(get(Id, Key) ->
+             undefined | binary() | {error, any()} when Id::atom(),
+                                                        Key::binary()).
 get(Id, Key) ->
     gen_server:call(Id, {get, Key}).
 
 %% @doc Retrieve a value associated with a specified key
 %%
--spec(get_filepath(atom(), binary()) ->
-             undefined | #cache_meta{} | {error, any()}).
+-spec(get_filepath(Id, Key) ->
+             undefined | #cache_meta{} | {error, any()} when Id::atom(),
+                                                             Key::binary()).
 get_filepath(Id, Key) ->
     gen_server:call(Id, {get_filepath, Key}).
 
 %% @doc Retrieve a value associated with a specified key
 %%
--spec(get(atom(), any(), binary()) ->
-             undefined | binary() | {error, any()}).
+-spec(get(Id, Ref, Key) ->
+             undefined | binary() | {error, any()} when Id::atom(),
+                                                        Ref::any(),
+                                                        Key::binary()).
 get(Id, Ref, Key) ->
     gen_server:call(Id, {get, Ref, Key}).
 
 
 %% @doc Insert a key-value pair into the leo_dcerl
 %%
--spec(put(atom(), binary(), binary()) ->
-             ok | {error, any()}).
+-spec(put(Id, Key, Value) ->
+             ok | {error, any()} when Id::atom(),
+                                      Key::binary(),
+                                      Value::binary()).
 put(Id, Key, Value) ->
     gen_server:call(Id, {put, Key, Value}).
 
--spec(put(atom(), any(), binary(), binary()) ->
-             ok | {error, any()}).
+-spec(put(Id, Ref, Key, Value) ->
+             ok | {error, any()} when Id::atom(),
+                                      Ref::any(),
+                                      Key::binary(),
+                                      Value::binary()).
 put(Id, Ref, Key, Value) ->
     gen_server:call(Id, {put, Ref, Key, Value}).
 
 
 %% @doc Start transaction of insert chunked objects
--spec(put_begin_tran(atom(), binary()) ->
-             ok | {error, any()}).
+-spec(put_begin_tran(Id, Key) ->
+             ok | {error, any()} when Id::atom(),
+                                      Key::binary()).
 put_begin_tran(Id, Key) ->
     gen_server:call(Id, {put_begin_tran, Key}).
 
 
 %% @doc End transaction of insert chunked objects
--spec(put_end_tran(atom(), any(), binary(), #cache_meta{}, boolean()) ->
-             ok | {error, any()}).
+-spec(put_end_tran(Id, Ref, Key, Meta, IsCommit) ->
+             ok | {error, any()} when Id::atom(),
+                                      Ref::any(),
+                                      Key::binary(),
+                                      Meta::#cache_meta{},
+                                      IsCommit::boolean()).
 put_end_tran(Id, Ref, Key, Meta, IsCommit) ->
     gen_server:call(Id, {put_end_tran, Ref, Key, Meta, IsCommit}).
 
 
 %% @doc Remove a key-value pair by a specified key into the leo_dcerl
--spec(delete(atom(), binary()) ->
-             ok | {error, any()}).
+-spec(delete(Id, Key) ->
+             ok | {error, any()} when Id::atom(),
+                                      Key::binary()).
 delete(Id, Key) ->
     gen_server:call(Id, {delete, Key}).
 
 
 %% @doc Return server's state
--spec(stats(atom()) ->
-             any()).
+-spec(stats(Id) ->
+             any() when Id::atom()).
 stats(Id) ->
     gen_server:call(Id, {stats}).
 
 
 %% @doc Return server's items
--spec(items(atom()) ->
-             any()).
+-spec(items(Id) ->
+             any() when Id::atom()).
 items(Id) ->
     gen_server:call(Id, {items}).
 
 
 %% @doc Return server's summary of cache size
--spec(size(atom()) ->
-             any()).
+-spec(size(Id) ->
+             any() when Id::atom()).
 size(Id) ->
     gen_server:call(Id, {size}).
 
