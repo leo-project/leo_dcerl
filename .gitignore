@@ -11,3 +11,4 @@ c_src/libcutil
 leo_dcerl.dot
 leo_dcerl.png
 .rebar/
+doc/
