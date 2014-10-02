@@ -20,7 +20,8 @@
 %%
 %% ---------------------------------------------------------------------
 %% Leo Disk Cache
-%% @doc
+%% @doc The disc cache API
+%% @reference https://github.com/leo-project/leo_dcerl/blob/master/src/leo_dcerl.erl
 %% @end
 %%======================================================================
 -module(leo_dcerl).
