@@ -76,6 +76,7 @@ normal_test() ->
 
     %% Test - PUT#2
     {ok, Ref} = leo_dcerl_server:put_begin_tran(Id, BinKey),
+    {error, conflict} = leo_dcerl_server:put_begin_tran(Id, BinKey),
     Chunk = data_block(Src, 128),
     ok = leo_dcerl_server:put(Id, Ref, BinKey, Chunk),
     ok = leo_dcerl_server:put(Id, Ref, BinKey, Chunk),

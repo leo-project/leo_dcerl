@@ -355,13 +355,15 @@ handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = H
                                        [{module, ?MODULE_STRING},
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
-                {{error, Cause}, State};
+                Handler3 = Handler#dcerl_state{tmp_datafile_iodev = undefined},
+                {{error, Cause}, State#state{handler = Handler3}};
             {error, Cause} ->
                 error_logger:error_msg("~p,~p,~p,~p~n",
                                        [{module, ?MODULE_STRING},
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
-                {{error, Cause}, State}
+                Handler3 = Handler#dcerl_state{tmp_datafile_iodev = undefined},
+                {{error, Cause}, State#state{handler = Handler3}}
         end,
     {reply, Res, NewState};
 

@@ -175,6 +175,7 @@ put_begin(#dcerl_state{journalfile_iodev = undefined} = _State, _Key) ->
     {error, badarg};
 put_begin(#dcerl_state{datadir_path      = DataDir,
                        ongoing_keys      = OnKeys,
+                       tmp_datafile_iodev = undefined,
                        journalfile_iodev = IoDev} = State, BinKey) ->
     try
         StrKey = filename_bin2str(BinKey),
@@ -184,7 +185,8 @@ put_begin(#dcerl_state{datadir_path      = DataDir,
         OnKeys2 = sets:add_element(BinKey, OnKeys),
         TmpDP = data_filename(DataDir, BinKey) ++ ?SUFFIX_TMP,
         {ok, TmpIoDev} = file:open(TmpDP, [write, raw, delayed_write]),
-        {ok, State#dcerl_state{ongoing_keys = OnKeys2},
+        {ok, State#dcerl_state{ongoing_keys       = OnKeys2,
+                               tmp_datafile_iodev = TmpIoDev},
          #dcerl_fd{key                = BinKey,
                    tmp_datafile_iodev = TmpIoDev}}
     catch
@@ -195,7 +197,9 @@ put_begin(#dcerl_state{datadir_path      = DataDir,
                                     {line, ?LINE},
                                     {body, Reason}]),
             {error, Reason}
-    end.
+    end;
+put_begin(_State, _Key) ->
+    {error, conflict}.
 
 %%
 %% @doc Put a chunk into the specified leo_dcerl erlang process while doing transaction
@@ -266,6 +270,7 @@ put_end(#dcerl_state{cache_entries     = CE,
         PrevSize = CS#cache_stats.cached_size,
         PrevRec  = CS#cache_stats.records,
         NewState = State#dcerl_state{
+                     tmp_datafile_iodev = undefined,
                      redundant_op_cnt = OpCnt + 1,
                      ongoing_keys     = OnKeys2,
                      cache_metas      = Metas2,
@@ -298,6 +303,7 @@ put_end(#dcerl_state{datadir_path      = DataDir,
     OnKeys2 = sets:del_element(BinKey, OnKeys),
 
     {ok, State#dcerl_state{
+           tmp_datafile_iodev = undefined,
            redundant_op_cnt = OpCnt + 1,
            ongoing_keys     = OnKeys2}}
     catch
