@@ -201,8 +201,10 @@ put_begin(#dcerl_state{datadir_path      = DataDir,
 %% @doc Put a chunk into the specified leo_dcerl erlang process while doing transaction
 -spec(put_chunk(State, Fd, Chunk) ->
              ok|{error, any()} when State::#dcerl_state{},
-                                    Fd::#dcerl_fd{},
+                                    Fd::#dcerl_fd{}|undefined,
                                     Chunk::binary()).
+put_chunk(_State, undefined, _Chunk) ->
+    {error, undefined};
 put_chunk(_State, #dcerl_fd{tmp_datafile_iodev = TmpIoDev} = _Fd, Chunk) ->
     file:write(TmpIoDev, Chunk).
 
@@ -211,9 +213,11 @@ put_chunk(_State, #dcerl_fd{tmp_datafile_iodev = TmpIoDev} = _Fd, Chunk) ->
 %%      into the specified leo_dcerl erlang process
 -spec(put_end(State, Fd, CM, Commit) ->
              {ok, #dcerl_state{}}|{error, any()} when State::#dcerl_state{},
-                                                      Fd::#dcerl_fd{},
+                                                      Fd::#dcerl_fd{}|undefined,
                                                       CM::#cache_meta{},
                                                       Commit::boolean()).
+put_end(_State, undefined, _CM, _Commit) ->
+    {error, undefined};
 put_end(#dcerl_state{cache_entries     = CE,
                      cache_stats       = CS,
                      datadir_path      = DataDir,
