@@ -25,16 +25,17 @@
 
 %% dcerl's inner state
 -record(dcerl_state, {
-    journaldir_path   = "" :: string(),
-    journalfile_iodev      :: file:io_device(),
-    datadir_path      = "" :: string(),
-    max_cache_size    = 0  :: pos_integer(),
-    chunk_size        = 64 :: pos_integer(),
-    redundant_op_cnt  = 0  :: non_neg_integer(),
-    ongoing_keys           :: set(),
-    cache_metas            :: dict(),
-    cache_stats            :: #cache_stats{},
-    cache_entries          :: term() % NIF resource
+    journaldir_path    = ""        :: string(),
+    journalfile_iodev  = undefined :: file:io_device()|undefined,
+    tmp_datafile_iodev = undefined :: file:io_device()|undefined,
+    datadir_path       = ""        :: string(),
+    max_cache_size     = 0         :: pos_integer(),
+    chunk_size         = 64        :: pos_integer(),
+    redundant_op_cnt   = 0         :: non_neg_integer(),
+    ongoing_keys                   :: set(),
+    cache_metas                    :: dict(),
+    cache_stats                    :: #cache_stats{},
+    cache_entries                  :: term() % NIF resource
 }).
 
 -define(JOURNAL_FNAME, "journal").

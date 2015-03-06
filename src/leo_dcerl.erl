@@ -20,7 +20,8 @@
 %%
 %% ---------------------------------------------------------------------
 %% Leo Disk Cache
-%% @doc
+%% @doc The disc cache API
+%% @reference https://github.com/leo-project/leo_dcerl/blob/master/src/leo_dcerl.erl
 %% @end
 %%======================================================================
 -module(leo_dcerl).
@@ -174,6 +175,7 @@ put_begin(#dcerl_state{journalfile_iodev = undefined} = _State, _Key) ->
     {error, badarg};
 put_begin(#dcerl_state{datadir_path      = DataDir,
                        ongoing_keys      = OnKeys,
+                       tmp_datafile_iodev = undefined,
                        journalfile_iodev = IoDev} = State, BinKey) ->
     try
         StrKey = filename_bin2str(BinKey),
@@ -183,7 +185,8 @@ put_begin(#dcerl_state{datadir_path      = DataDir,
         OnKeys2 = sets:add_element(BinKey, OnKeys),
         TmpDP = data_filename(DataDir, BinKey) ++ ?SUFFIX_TMP,
         {ok, TmpIoDev} = file:open(TmpDP, [write, raw, delayed_write]),
-        {ok, State#dcerl_state{ongoing_keys = OnKeys2},
+        {ok, State#dcerl_state{ongoing_keys       = OnKeys2,
+                               tmp_datafile_iodev = TmpIoDev},
          #dcerl_fd{key                = BinKey,
                    tmp_datafile_iodev = TmpIoDev}}
     catch
@@ -194,14 +197,18 @@ put_begin(#dcerl_state{datadir_path      = DataDir,
                                     {line, ?LINE},
                                     {body, Reason}]),
             {error, Reason}
-    end.
+    end;
+put_begin(_State, _Key) ->
+    {error, conflict}.
 
 %%
 %% @doc Put a chunk into the specified leo_dcerl erlang process while doing transaction
 -spec(put_chunk(State, Fd, Chunk) ->
              ok|{error, any()} when State::#dcerl_state{},
-                                    Fd::#dcerl_fd{},
+                                    Fd::#dcerl_fd{}|undefined,
                                     Chunk::binary()).
+put_chunk(_State, undefined, _Chunk) ->
+    {error, undefined};
 put_chunk(_State, #dcerl_fd{tmp_datafile_iodev = TmpIoDev} = _Fd, Chunk) ->
     file:write(TmpIoDev, Chunk).
 
@@ -210,9 +217,11 @@ put_chunk(_State, #dcerl_fd{tmp_datafile_iodev = TmpIoDev} = _Fd, Chunk) ->
 %%      into the specified leo_dcerl erlang process
 -spec(put_end(State, Fd, CM, Commit) ->
              {ok, #dcerl_state{}}|{error, any()} when State::#dcerl_state{},
-                                                      Fd::#dcerl_fd{},
+                                                      Fd::#dcerl_fd{}|undefined,
                                                       CM::#cache_meta{},
                                                       Commit::boolean()).
+put_end(_State, undefined, _CM, _Commit) ->
+    {error, undefined};
 put_end(#dcerl_state{cache_entries     = CE,
                      cache_stats       = CS,
                      datadir_path      = DataDir,
@@ -261,6 +270,7 @@ put_end(#dcerl_state{cache_entries     = CE,
         PrevSize = CS#cache_stats.cached_size,
         PrevRec  = CS#cache_stats.records,
         NewState = State#dcerl_state{
+                     tmp_datafile_iodev = undefined,
                      redundant_op_cnt = OpCnt + 1,
                      ongoing_keys     = OnKeys2,
                      cache_metas      = Metas2,
@@ -293,6 +303,7 @@ put_end(#dcerl_state{datadir_path      = DataDir,
     OnKeys2 = sets:del_element(BinKey, OnKeys),
 
     {ok, State#dcerl_state{
+           tmp_datafile_iodev = undefined,
            redundant_op_cnt = OpCnt + 1,
            ongoing_keys     = OnKeys2}}
     catch

@@ -20,7 +20,7 @@
 %%
 %% ---------------------------------------------------------------------
 %% DCerl Server
-%% @doc
+%% @doc The disc cache's server
 %% @end
 %%======================================================================
 -module(leo_dcerl_server).
@@ -52,8 +52,7 @@
 %%--------------------------------------------------------------------
 %% API
 %%--------------------------------------------------------------------
-%% Function: {ok,Pid} | ignore | {error, Error}
-%% Description: Starts the server.
+%% @doc Starts the server.
 -spec(start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
              'ignore' | {'error',_} | {'ok',pid()} when Id::atom(),
                                                         DataDir::string(),
@@ -65,15 +64,13 @@ start_link(Id, DataDir, JournalDir, CacheSize, ChunkSize) ->
                           [DataDir, JournalDir, CacheSize, ChunkSize], []).
 
 
-%% Function: -> ok
-%% Description: Manually stops the server.
+%% @doc Manually stops the server.
 -spec(stop(Pid) -> ok when Pid::atom()).
 stop(Pid) ->
     gen_server:cast(Pid, stop).
 
 
 %% @doc Retrieve a reference
-%%
 -spec(get_ref(Id, Key) ->
              undefined | binary() | {error, any()} when Id::atom(),
                                                         Key::binary()).
@@ -82,7 +79,6 @@ get_ref(Id, Key) ->
 
 
 %% @doc Retrieve a value associated with a specified key
-%%
 -spec(get(Id, Key) ->
              undefined | binary() | {error, any()} when Id::atom(),
                                                         Key::binary()).
@@ -90,7 +86,6 @@ get(Id, Key) ->
     gen_server:call(Id, {get, Key}).
 
 %% @doc Retrieve a value associated with a specified key
-%%
 -spec(get_filepath(Id, Key) ->
              undefined | #cache_meta{} | {error, any()} when Id::atom(),
                                                              Key::binary()).
@@ -98,7 +93,6 @@ get_filepath(Id, Key) ->
     gen_server:call(Id, {get_filepath, Key}).
 
 %% @doc Retrieve a value associated with a specified key
-%%
 -spec(get(Id, Ref, Key) ->
              undefined | binary() | {error, any()} when Id::atom(),
                                                         Ref::any(),
@@ -108,7 +102,6 @@ get(Id, Ref, Key) ->
 
 
 %% @doc Insert a key-value pair into the leo_dcerl
-%%
 -spec(put(Id, Key, Value) ->
              ok | {error, any()} when Id::atom(),
                                       Key::binary(),
@@ -176,6 +169,7 @@ size(Id) ->
 %%====================================================================
 %% GEN_SERVER CALLBACKS
 %%====================================================================
+%% @doc Initiates the server
 init([DataDir, JournalDir, CacheSize, ChunkSize]) ->
     case leo_dcerl:start(DataDir, JournalDir, CacheSize, ChunkSize) of
         {ok, Handler} ->
@@ -185,6 +179,8 @@ init([DataDir, JournalDir, CacheSize, ChunkSize]) ->
             {stop, Cause, null}
     end.
 
+
+%% @doc gen_server callback - Module:handle_call(Request, From, State) -> Result
 handle_call({get_ref, Key}, _From, #state{handler = Handler} = State) ->
     {Res, NewState} =
         case catch leo_dcerl:get(Handler, Key) of
@@ -359,13 +355,15 @@ handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = H
                                        [{module, ?MODULE_STRING},
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
-                {{error, Cause}, State};
+                Handler3 = Handler#dcerl_state{tmp_datafile_iodev = undefined},
+                {{error, Cause}, State#state{handler = Handler3}};
             {error, Cause} ->
                 error_logger:error_msg("~p,~p,~p,~p~n",
                                        [{module, ?MODULE_STRING},
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
-                {{error, Cause}, State}
+                Handler3 = Handler#dcerl_state{tmp_datafile_iodev = undefined},
+                {{error, Cause}, State#state{handler = Handler3}}
         end,
     {reply, Res, NewState};
 
@@ -422,29 +420,34 @@ handle_call({size}, _From, #state{handler = Handler} = State) ->
 handle_call(_Request, _From, State) ->
     {reply, undefined, State}.
 
+
+%% @doc Handling cast message
+%% <p>
+%% gen_server callback - Module:handle_cast(Request, State) -> Result.
+%% </p>
 handle_cast(stop, State) ->
     {stop, normal, State};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+
+%% @doc Handling all non call/cast messages
+%% <p>
+%% gen_server callback - Module:handle_info(Info, State) -> Result.
+%% </p>
 handle_info(_Info, State) ->
     {noreply, State}.
 
 
-%% ----------------------------------------------------------------------------------------------------------
-%% Function: terminate(Reason, State) -> void()
-%% Description: This function is called by a gen_server when it is about to terminate. When it returns,
-%% the gen_server terminates with Reason. The return value is ignored.
-%% ----------------------------------------------------------------------------------------------------------
+%% @doc This function is called by a gen_server when it is about to
+%%      terminate. It should be the opposite of Module:init/1 and do any necessary
+%%      cleaning up. When it returns, the gen_server terminates with Reason.
 terminate(_Reason, _State) ->
     terminated.
 
 
-%% ----------------------------------------------------------------------------------------------------------
-%% Function: code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% Description: Convert process state when code is changed.
-%% ----------------------------------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
