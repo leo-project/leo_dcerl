@@ -28,10 +28,12 @@
 -author('yoshiyuki.kanno@stoic.co.jp').
 
 -include("leo_dcerl.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -export([start/4, stop/1]).
 -export([stats/1]).
 -export([put/3, put_begin/2, put_chunk/3, put_end/4]).
+-export([get_size/2, get_cachepath/2]).
 -export([remove/2, get/2, get_filepath/2, get_chunk/2, delete/1]).
 
 -define(SUFFIX_TMP, ".tmp").
@@ -533,6 +535,36 @@ get_chunk(#dcerl_state{cache_stats       = CS,
         {error, Reason} ->
             _ = file:close(TmpIoDev),
             {error, Reason}
+    end.
+
+%%
+%% @doc
+-spec(get_size(State, BinKey) ->
+            {ok, integer()} | not_found | {error, any()} when State  :: #dcerl_state{},
+                                                              BinKey :: binary()).
+get_size(#dcerl_state{datadir_path = DataDir} = _State, BinKey) -> 
+    Path = data_filename(DataDir, BinKey),
+    case file:read_file_info(Path) of
+        {ok, FileInfo} ->
+            {ok, FileInfo#file_info.size};
+        {error, enoent} ->
+            not_found;
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+%%
+%% @doc
+-spec(get_cachepath(State, BinKey) ->
+            {ok, string()} | not_found when State  :: #dcerl_state{},
+                                            BinKey :: binary()).
+get_cachepath(#dcerl_state{datadir_path = DataDir} = _State, BinKey) -> 
+    Path = data_filename(DataDir, BinKey) ++ ?SUFFIX_TMP,
+    case filelib:is_regular(Path) of
+        true ->
+            {ok, Path};
+        false ->
+            not_found
     end.
 
 %%
