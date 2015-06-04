@@ -32,6 +32,7 @@
 
 %% External API
 -export([start_link/0, stop/0]).
+-export([start_child/5]).
 
 %% Callbacks
 -export([init/1]).
@@ -53,13 +54,7 @@
 %% @doc start link.
 %% @end
 start_link() ->
-    TotalCacheSize = case application:get_env(leo_dcerl, total_cache_size) of
-                         {ok, Value1} when is_integer(Value1) ->
-                             Value1;
-                         _ ->
-                             ?DEF_TOTA_CACHE_SIZE
-                     end,
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [TotalCacheSize]).
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 
 %% @doc stop process.
@@ -73,17 +68,30 @@ stop() ->
     end.
 
 
+%% @doc start a child under this
+%% @end
+start_child(ProcId, DataDir, JournalDir, CacheCapacity, ThresholdLen) ->
+    case supervisor:start_child(
+           ?MODULE, {ProcId,
+                     {leo_dcerl_server, start_link,
+                      [ProcId, DataDir, JournalDir, CacheCapacity, ThresholdLen]},
+                     permanent, 2000, worker, [leo_dcerl_server]}) of
+        {ok, Pid} ->
+            {ok, Pid};
+        {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING},
+                                    {function, "start_child/2"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause}
+    end.
+
+
 %% ---------------------------------------------------------------------
 %% Callbacks
 %% ---------------------------------------------------------------------
 %% @doc stop process.
 %% @end
 %% @private
-init([TotalCacheSize]) ->
-    {ok, {{one_for_one, ?MAX_RESTART, ?MAX_TIME},
-          [{leo_dcerl_server,
-            {leo_dcerl_server, start_link, [TotalCacheSize]},
-            permanent,
-            ?SHUTDOWN_WAITING_TIME,
-            worker,
-            [leo_dcerl_server]}]}}.
+init([]) ->
+    {ok, {{one_for_one, ?MAX_RESTART, ?MAX_TIME}, []}}.
