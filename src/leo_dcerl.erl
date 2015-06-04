@@ -33,7 +33,7 @@
 -export([start/4, stop/1]).
 -export([stats/1]).
 -export([put/3, put_begin/2, put_chunk/3, put_end/4]).
--export([get_size/2, get_cachepath/2]).
+-export([get_tmp_size/2, get_tmp_cachepath/2]).
 -export([remove/2, get/2, get_filepath/2, get_chunk/2, delete/1]).
 
 -define(SUFFIX_TMP, ".tmp").
@@ -538,12 +538,12 @@ get_chunk(#dcerl_state{cache_stats       = CS,
     end.
 
 %%
-%% @doc
--spec(get_size(State, BinKey) ->
+%% @doc Return the current size of the tmp datafile
+-spec(get_tmp_size(State, BinKey) ->
             {ok, integer()} | not_found | {error, any()} when State  :: #dcerl_state{},
                                                               BinKey :: binary()).
-get_size(#dcerl_state{datadir_path = DataDir} = _State, BinKey) -> 
-    Path = data_filename(DataDir, BinKey),
+get_tmp_size(#dcerl_state{datadir_path = DataDir} = _State, BinKey) -> 
+    Path = data_filename(DataDir, BinKey) ++ ?SUFFIX_TMP,
     case file:read_file_info(Path) of
         {ok, FileInfo} ->
             {ok, FileInfo#file_info.size};
@@ -554,11 +554,11 @@ get_size(#dcerl_state{datadir_path = DataDir} = _State, BinKey) ->
     end.
 
 %%
-%% @doc
--spec(get_cachepath(State, BinKey) ->
+%% @doc Return the path of the tmp datafile
+-spec(get_tmp_cachepath(State, BinKey) ->
             {ok, string()} | not_found when State  :: #dcerl_state{},
                                             BinKey :: binary()).
-get_cachepath(#dcerl_state{datadir_path = DataDir} = _State, BinKey) -> 
+get_tmp_cachepath(#dcerl_state{datadir_path = DataDir} = _State, BinKey) -> 
     Path = data_filename(DataDir, BinKey) ++ ?SUFFIX_TMP,
     case filelib:is_regular(Path) of
         true ->

@@ -368,11 +368,11 @@ handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = H
     {reply, Res, NewState};
 
 
-handle_call({get_size, Key}, _From, #state{handler = Handler} = State) ->
-    Reply = leo_dcerl:get_size(Handler, Key),
+handle_call({get_tmp_size, Key}, _From, #state{handler = Handler} = State) ->
+    Reply = leo_dcerl:get_tmp_size(Handler, Key),
     {reply, Reply, State};
-handle_call({get_cachepath, Key}, _From, #state{handler = Handler} = State) ->
-    Reply = leo_dcerl:get_cachepath(Handler, Key),
+handle_call({get_tmp_cachepath, Key}, _From, #state{handler = Handler} = State) ->
+    Reply = leo_dcerl:get_tmp_cachepath(Handler, Key),
     {reply, Reply, State};
 handle_call({delete, Key}, _From, #state{handler    = Handler,
                                          stats_dels = Dels} = State) ->
