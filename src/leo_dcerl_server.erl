@@ -2,7 +2,7 @@
 %%
 %% Leo Dcerl - [D]isc [C]ache [Erl]ang
 %%
-%% Copyright (c) 2012-2013 Rakuten, Inc.
+%% Copyright (c) 2012-2015 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -355,19 +355,25 @@ handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = H
                                        [{module, ?MODULE_STRING},
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
-                Handler3 = Handler#dcerl_state{tmp_datafile_iodev = undefined},
+                Handler3 = Handler#dcerl_state{tmp_data_file_io_dev = undefined},
                 {{error, Cause}, State#state{handler = Handler3}};
             {error, Cause} ->
                 error_logger:error_msg("~p,~p,~p,~p~n",
                                        [{module, ?MODULE_STRING},
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
-                Handler3 = Handler#dcerl_state{tmp_datafile_iodev = undefined},
+                Handler3 = Handler#dcerl_state{tmp_data_file_io_dev = undefined},
                 {{error, Cause}, State#state{handler = Handler3}}
         end,
     {reply, Res, NewState};
 
 
+handle_call({get_tmp_size, Key}, _From, #state{handler = Handler} = State) ->
+    Reply = leo_dcerl:get_tmp_size(Handler, Key),
+    {reply, Reply, State};
+handle_call({get_tmp_cachepath, Key}, _From, #state{handler = Handler} = State) ->
+    Reply = leo_dcerl:get_tmp_cachepath(Handler, Key),
+    {reply, Reply, State};
 handle_call({delete, Key}, _From, #state{handler    = Handler,
                                          stats_dels = Dels} = State) ->
     {Res, NewState} =
