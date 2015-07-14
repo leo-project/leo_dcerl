@@ -1,3 +1,24 @@
+%%======================================================================
+%%
+%% Leo Disk Cache Library for Erlang(leo_dcerl)
+%%
+%% Copyright (c) 2012-2015 Rakuten, Inc.
+%%
+%% This file is provided to you under the Apache License,
+%% Version 2.0 (the "License"); you may not use this file
+%% except in compliance with the License.  You may obtain
+%% a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing,
+%% software distributed under the License is distributed on an
+%% "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+%% KIND, either express or implied.  See the License for the
+%% specific language governing permissions and limitations
+%% under the License.
+%%
+%%======================================================================
 -author('yoshiyuki.kanno@stoic.co.jp').
 
 -record(cache_meta, {
@@ -19,23 +40,23 @@
 
 %% For chunked read/write I/F
 -record(dcerl_fd, {
-    key                = <<>> :: binary(),
-    tmp_datafile_iodev        :: file:io_device()
+    key = <<>> :: binary(),
+    tmp_data_file_io_dev :: file:io_device()
 }).
 
 %% dcerl's inner state
 -record(dcerl_state, {
-    journaldir_path    = ""        :: string(),
-    journalfile_iodev  = undefined :: file:io_device()|undefined,
-    tmp_datafile_iodev = undefined :: file:io_device()|undefined,
-    datadir_path       = ""        :: string(),
-    max_cache_size     = 0         :: pos_integer(),
-    chunk_size         = 64        :: pos_integer(),
-    redundant_op_cnt   = 0         :: non_neg_integer(),
-    ongoing_keys                   :: set(),
-    cache_metas                    :: dict(),
-    cache_stats                    :: #cache_stats{},
-    cache_entries                  :: term() % NIF resource
+    journa_dir_path    = "" :: string(),
+    journal_file_io_dev  = undefined :: file:io_device()|undefined,
+    tmp_data_file_io_dev = undefined :: file:io_device()|undefined,
+    data_dir_path      = "" :: string(),
+    max_cache_size     = 0  :: pos_integer(),
+    chunk_size         = 64 :: pos_integer(),
+    redundant_op_cnt   = 0  :: non_neg_integer(),
+    ongoing_keys            :: set(),
+    cache_metas             :: dict(),
+    cache_stats             :: #cache_stats{},
+    cache_entries           :: term() % NIF resource
 }).
 
 -define(JOURNAL_FNAME, "journal").
