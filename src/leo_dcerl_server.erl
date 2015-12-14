@@ -208,6 +208,8 @@ handle_call({get_ref, Key}, _From, #state{handler = Handler} = State) ->
         end,
     {reply, Res, NewState};
 
+handle_call({get,<<>>}, _From, #state{stats_gets = Gets} = State) ->
+    {not_found, State#state{stats_gets = Gets + 1}};
 handle_call({get, Key}, _From, #state{handler = Handler,
                                       stats_gets = Gets,
                                       stats_hits = Hits} = State) ->
@@ -297,6 +299,8 @@ handle_call({get, Ref,_Key}, _From, #state{handler = Handler,
         end,
     {reply, Res, NewState};
 
+handle_call({put,<<>>,_Val}, _From, #state{stats_puts = Puts} = State) ->
+    {ok, State#state{stats_puts = Puts + 1}};
 handle_call({put, Key, Val}, _From, #state{handler = Handler,
                                            stats_puts = Puts} = State) ->
     {Res, NewState} =
@@ -388,10 +392,15 @@ handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = H
 handle_call({get_tmp_size, Key}, _From, #state{handler = Handler} = State) ->
     Reply = leo_dcerl:get_tmp_size(Handler, Key),
     {reply, Reply, State};
+
 handle_call({get_tmp_cachepath, Key}, _From, #state{handler = Handler} = State) ->
     Reply = leo_dcerl:get_tmp_cachepath(Handler, Key),
     {reply, Reply, State};
-handle_call({delete, Key}, _From, #state{handler    = Handler,
+
+
+handle_call({delete,<<>>}, _From, #state{stats_dels = Dels} = State) ->
+    {ok, State#state{stats_dels = Dels + 1}};
+handle_call({delete, Key}, _From, #state{handler = Handler,
                                          stats_dels = Dels} = State) ->
     {Res, NewState} =
         case catch leo_dcerl:remove(Handler, Key) of
