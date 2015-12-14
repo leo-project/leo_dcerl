@@ -25,7 +25,6 @@
 %% @end
 %%======================================================================
 -module(leo_dcerl).
--author('yoshiyuki.kanno@stoic.co.jp').
 
 -include("leo_dcerl.hrl").
 -include_lib("kernel/include/file.hrl").

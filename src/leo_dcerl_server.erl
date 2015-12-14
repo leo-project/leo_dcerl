@@ -24,7 +24,6 @@
 %% @end
 %%======================================================================
 -module(leo_dcerl_server).
--author("Yosuke Hara").
 
 -behaviour(gen_server).
 
@@ -42,11 +41,11 @@
          handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {handler :: #dcerl_state{},
-                total_cache_size = 0 :: integer(),
-                stats_gets       = 0 :: integer(),
-                stats_puts       = 0 :: integer(),
-                stats_dels       = 0 :: integer(),
-                stats_hits       = 0 :: integer()
+                total_cache_size = 0 :: non_neg_integer(),
+                stats_gets = 0 :: non_neg_integer(),
+                stats_puts = 0 :: non_neg_integer(),
+                stats_dels = 0 :: non_neg_integer(),
+                stats_hits = 0 :: non_neg_integer()
                }).
 
 %%--------------------------------------------------------------------
@@ -192,7 +191,7 @@ init([DataDir, JournalDir, CacheSize, ChunkSize]) ->
     case leo_dcerl:start(DataDir, JournalDir, CacheSize, ChunkSize) of
         {ok, Handler} ->
             {ok, #state{total_cache_size = CacheSize,
-                        handler          = Handler}};
+                        handler = Handler}};
         {error, Cause} ->
             {stop, Cause, null}
     end.
@@ -424,11 +423,11 @@ handle_call(stats, _From, #state{handler = Handler,
     {ok, DStats} = leo_dcerl:stats(Handler),
     Size = DStats#cache_stats.cached_size,
 
-    Stats = #cache_stats{hits        = Hits,
-                         gets        = Gets,
-                         puts        = Puts,
-                         dels        = Dels,
-                         records     = Items,
+    Stats = #cache_stats{hits = Hits,
+                         gets = Gets,
+                         puts = Puts,
+                         dels = Dels,
+                         records = Items,
                          cached_size = Size},
     {reply, {ok, Stats}, State};
 
