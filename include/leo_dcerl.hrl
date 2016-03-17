@@ -19,6 +19,15 @@
 %% under the License.
 %%
 %%======================================================================
+
+-ifdef(namespaced_types).
+-type otp_dict() :: dict:dict().
+-type otp_set() :: sets:set().
+-else.
+-type otp_dict() :: dict().
+-type otp_set() :: set().
+-endif.
+
 -record(cache_meta, {
           size = 0  :: non_neg_integer(),
           md5 = 0  :: integer(),
@@ -51,8 +60,8 @@
           max_cache_size = 0  :: pos_integer(),
           chunk_size = 64 :: pos_integer(),
           redundant_op_cnt = 0  :: non_neg_integer(),
-          ongoing_keys :: set(),
-          cache_metas :: dict(),
+          ongoing_keys :: otp_set(),
+          cache_metas :: otp_dict(),
           cache_stats = #cache_stats{} :: #cache_stats{},
           cache_entries :: term() % NIF resource
          }).
