@@ -24,7 +24,6 @@
 %% @end
 %%======================================================================
 -module(leo_dcerl_server).
--author("Yosuke Hara").
 
 -behaviour(gen_server).
 
@@ -42,11 +41,11 @@
          handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {handler :: #dcerl_state{},
-                total_cache_size = 0 :: integer(),
-                stats_gets       = 0 :: integer(),
-                stats_puts       = 0 :: integer(),
-                stats_dels       = 0 :: integer(),
-                stats_hits       = 0 :: integer()
+                total_cache_size = 0 :: non_neg_integer(),
+                stats_gets = 0 :: non_neg_integer(),
+                stats_puts = 0 :: non_neg_integer(),
+                stats_dels = 0 :: non_neg_integer(),
+                stats_hits = 0 :: non_neg_integer()
                }).
 
 %%--------------------------------------------------------------------
@@ -72,31 +71,43 @@ stop(Pid) ->
 
 %% @doc Retrieve a reference
 -spec(get_ref(Id, Key) ->
-             undefined | binary() | {error, any()} when Id::atom(),
-                                                        Key::binary()).
+             {ok, Ref} | {error, any()} when Id::atom(),
+                                             Key::binary(),
+                                             Ref::binary()).
 get_ref(Id, Key) ->
     gen_server:call(Id, {get_ref, Key}).
 
 
 %% @doc Retrieve a value associated with a specified key
 -spec(get(Id, Key) ->
-             undefined | binary() | {error, any()} when Id::atom(),
-                                                        Key::binary()).
+             {ok, Bin} | not_found | {error, any()} when Id::atom(),
+                                                         Key::binary(),
+                                                         Bin::binary()).
+get(_,<<>>) ->
+    not_found;
 get(Id, Key) ->
     gen_server:call(Id, {get, Key}).
 
+
 %% @doc Retrieve a value associated with a specified key
 -spec(get_filepath(Id, Key) ->
-             undefined | #cache_meta{} | {error, any()} when Id::atom(),
-                                                             Key::binary()).
+             {ok, Metadata} | not_found | {error, any()} when Id::atom(),
+                                                              Key::binary(),
+                                                              Metadata::#cache_meta{}).
+get_filepath(_,<<>>) ->
+    not_found;
 get_filepath(Id, Key) ->
     gen_server:call(Id, {get_filepath, Key}).
 
+
 %% @doc Retrieve a value associated with a specified key
 -spec(get(Id, Ref, Key) ->
-             undefined | binary() | {error, any()} when Id::atom(),
-                                                        Ref::any(),
-                                                        Key::binary()).
+             {ok, {Bin, boolean()}} | {error, any()} when Id::atom(),
+                                                          Ref::any(),
+                                                          Key::binary(),
+                                                          Bin::binary()).
+get(_,_,<<>>) ->
+    {error, not_found};
 get(Id, Ref, Key) ->
     gen_server:call(Id, {get, Ref, Key}).
 
@@ -106,6 +117,8 @@ get(Id, Ref, Key) ->
              ok | {error, any()} when Id::atom(),
                                       Key::binary(),
                                       Value::binary()).
+put(_,<<>>,_) ->
+    ok;
 put(Id, Key, Value) ->
     gen_server:call(Id, {put, Key, Value}).
 
@@ -114,6 +127,8 @@ put(Id, Key, Value) ->
                                       Ref::any(),
                                       Key::binary(),
                                       Value::binary()).
+put(_,_,<<>>,_) ->
+    ok;
 put(Id, Ref, Key, Value) ->
     gen_server:call(Id, {put, Ref, Key, Value}).
 
@@ -141,6 +156,8 @@ put_end_tran(Id, Ref, Key, Meta, IsCommit) ->
 -spec(delete(Id, Key) ->
              ok | {error, any()} when Id::atom(),
                                       Key::binary()).
+delete(_,<<>>) ->
+    ok;
 delete(Id, Key) ->
     gen_server:call(Id, {delete, Key}).
 
@@ -149,21 +166,21 @@ delete(Id, Key) ->
 -spec(stats(Id) ->
              any() when Id::atom()).
 stats(Id) ->
-    gen_server:call(Id, {stats}).
+    gen_server:call(Id, stats).
 
 
 %% @doc Return server's items
 -spec(items(Id) ->
              any() when Id::atom()).
 items(Id) ->
-    gen_server:call(Id, {items}).
+    gen_server:call(Id, items).
 
 
 %% @doc Return server's summary of cache size
 -spec(size(Id) ->
              any() when Id::atom()).
 size(Id) ->
-    gen_server:call(Id, {size}).
+    gen_server:call(Id, size).
 
 
 %%====================================================================
@@ -174,7 +191,7 @@ init([DataDir, JournalDir, CacheSize, ChunkSize]) ->
     case leo_dcerl:start(DataDir, JournalDir, CacheSize, ChunkSize) of
         {ok, Handler} ->
             {ok, #state{total_cache_size = CacheSize,
-                        handler          = Handler}};
+                        handler = Handler}};
         {error, Cause} ->
             {stop, Cause, null}
     end.
@@ -191,7 +208,9 @@ handle_call({get_ref, Key}, _From, #state{handler = Handler} = State) ->
         end,
     {reply, Res, NewState};
 
-handle_call({get, Key}, _From, #state{handler    = Handler,
+handle_call({get,<<>>}, _From, #state{stats_gets = Gets} = State) ->
+    {not_found, State#state{stats_gets = Gets + 1}};
+handle_call({get, Key}, _From, #state{handler = Handler,
                                       stats_gets = Gets,
                                       stats_hits = Hits} = State) ->
     {Res, NewState} =
@@ -227,7 +246,7 @@ handle_call({get, Key}, _From, #state{handler    = Handler,
         end,
     {reply, Res, NewState};
 
-handle_call({get_filepath, Key}, _From, #state{handler    = Handler,
+handle_call({get_filepath, Key}, _From, #state{handler = Handler,
                                                stats_gets = Gets,
                                                stats_hits = Hits} = State) ->
     {Res, NewState} =
@@ -254,7 +273,7 @@ handle_call({get_filepath, Key}, _From, #state{handler    = Handler,
         end,
     {reply, Res, NewState};
 
-handle_call({get, Ref,_Key}, _From, #state{handler    = Handler,
+handle_call({get, Ref,_Key}, _From, #state{handler = Handler,
                                            stats_gets = Gets,
                                            stats_hits = Hits} = State) ->
     {Res, NewState} =
@@ -280,6 +299,8 @@ handle_call({get, Ref,_Key}, _From, #state{handler    = Handler,
         end,
     {reply, Res, NewState};
 
+handle_call({put,<<>>,_Val}, _From, #state{stats_puts = Puts} = State) ->
+    {ok, State#state{stats_puts = Puts + 1}};
 handle_call({put, Key, Val}, _From, #state{handler = Handler,
                                            stats_puts = Puts} = State) ->
     {Res, NewState} =
@@ -371,10 +392,15 @@ handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = H
 handle_call({get_tmp_size, Key}, _From, #state{handler = Handler} = State) ->
     Reply = leo_dcerl:get_tmp_size(Handler, Key),
     {reply, Reply, State};
+
 handle_call({get_tmp_cachepath, Key}, _From, #state{handler = Handler} = State) ->
     Reply = leo_dcerl:get_tmp_cachepath(Handler, Key),
     {reply, Reply, State};
-handle_call({delete, Key}, _From, #state{handler    = Handler,
+
+
+handle_call({delete,<<>>}, _From, #state{stats_dels = Dels} = State) ->
+    {ok, State#state{stats_dels = Dels + 1}};
+handle_call({delete, Key}, _From, #state{handler = Handler,
                                          stats_dels = Dels} = State) ->
     {Res, NewState} =
         case catch leo_dcerl:remove(Handler, Key) of
@@ -397,28 +423,28 @@ handle_call({delete, Key}, _From, #state{handler    = Handler,
     {reply, Res, NewState};
 
 
-handle_call({stats}, _From, #state{handler    = Handler,
-                                   stats_hits = Hits,
-                                   stats_gets = Gets,
-                                   stats_puts = Puts,
-                                   stats_dels = Dels} = State) ->
+handle_call(stats, _From, #state{handler = Handler,
+                                 stats_hits = Hits,
+                                 stats_gets = Gets,
+                                 stats_puts = Puts,
+                                 stats_dels = Dels} = State) ->
     {ok, Items} = lru:items(Handler#dcerl_state.cache_entries),
     {ok, DStats} = leo_dcerl:stats(Handler),
     Size = DStats#cache_stats.cached_size,
 
-    Stats = #cache_stats{hits        = Hits,
-                         gets        = Gets,
-                         puts        = Puts,
-                         dels        = Dels,
-                         records     = Items,
+    Stats = #cache_stats{hits = Hits,
+                         gets = Gets,
+                         puts = Puts,
+                         dels = Dels,
+                         records = Items,
                          cached_size = Size},
     {reply, {ok, Stats}, State};
 
-handle_call({items}, _From, #state{handler = Handler} = State) ->
+handle_call(items, _From, #state{handler = Handler} = State) ->
     Reply = lru:items(Handler#dcerl_state.cache_entries),
     {reply, Reply, State};
 
-handle_call({size}, _From, #state{handler = Handler} = State) ->
+handle_call(size, _From, #state{handler = Handler} = State) ->
     {ok, DStats} = leo_dcerl:stats(Handler),
     Size = DStats#cache_stats.cached_size,
     {reply, {ok, Size}, State};
