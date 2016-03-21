@@ -21,13 +21,11 @@
 %%======================================================================
 
 -ifdef(namespaced_types).
--undef(otp_dict).
--undef(otp_set).
--type otp_dict() :: dict:dict().
--type otp_set() :: sets:set().
+-type dcerl_dict() :: dict:dict().
+-type dcerl_set() :: sets:set().
 -else.
--type otp_dict() :: dict().
--type otp_set() :: set().
+-type dcerl_dict() :: dict().
+-type dcerl_set() :: set().
 -endif.
 
 -record(cache_meta, {
@@ -62,8 +60,8 @@
           max_cache_size = 0  :: pos_integer(),
           chunk_size = 64 :: pos_integer(),
           redundant_op_cnt = 0  :: non_neg_integer(),
-          ongoing_keys :: otp_set(),
-          cache_metas :: otp_dict(),
+          ongoing_keys :: dcerl_set(),
+          cache_metas :: dcerl_dict(),
           cache_stats = #cache_stats{} :: #cache_stats{},
           cache_entries :: term() % NIF resource
          }).
