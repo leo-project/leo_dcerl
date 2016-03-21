@@ -21,6 +21,8 @@
 %%======================================================================
 
 -ifdef(namespaced_types).
+-undef(otp_dict).
+-undef(otp_set).
 -type otp_dict() :: dict:dict().
 -type otp_set() :: sets:set().
 -else.
