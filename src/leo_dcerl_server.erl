@@ -382,6 +382,9 @@ handle_call({put_end_tran, Ref, _Key, Meta, IsCommit}, _From, #state{handler = H
                                         {line, ?LINE}, {body, Cause}]),
                 Handler3 = Handler#dcerl_state{tmp_data_file_io_dev = undefined},
                 {{error, Cause}, State#state{handler = Handler3}};
+            {error, undefined} ->
+                Handler3 = Handler#dcerl_state{tmp_data_file_io_dev = undefined},
+                {{error, undefined}, State#state{handler = Handler3}};
             {error, Cause} ->
                 error_logger:error_msg("~p,~p,~p,~p~n",
                                        [{module, ?MODULE_STRING},
