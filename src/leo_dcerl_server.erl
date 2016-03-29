@@ -335,6 +335,8 @@ handle_call({put, Ref,_Key, Val}, _From, #state{handler = Handler} = State) ->
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
                 {{error, Cause}, State};
+            {error, undefined} ->
+                {{error, undefined}, State};
             {error, Cause} ->
                 error_logger:error_msg("~p,~p,~p,~p~n",
                                        [{module, ?MODULE_STRING},
@@ -355,6 +357,8 @@ handle_call({put_begin_tran, Key}, _From, #state{handler = Handler} = State) ->
                                         {function, "handle_call/3"},
                                         {line, ?LINE}, {body, Cause}]),
                 {{error, Cause}, State};
+            {error, conflict} ->
+                {{error, conflict}, State};
             {error, Cause} ->
                 error_logger:error_msg("~p,~p,~p,~p~n",
                                        [{module, ?MODULE_STRING},
