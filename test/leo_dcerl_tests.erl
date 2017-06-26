@@ -11,7 +11,7 @@
 %% gen test data
 init_source() ->
     SourceSz = 1024 * 1024,
-    {SourceSz, crypto:rand_bytes(SourceSz)}.
+    {SourceSz, crypto:strong_rand_bytes(SourceSz)}.
 data_block({SourceSz, Source}, BlockSize) ->
     case SourceSz - BlockSize > 0 of
         true ->
