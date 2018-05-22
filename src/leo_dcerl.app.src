@@ -23,7 +23,7 @@
 {application, leo_dcerl,
  [{description, "Erlang disk based SSD-Aware caching library"},
   {mod, {leo_dcerl_app, []}},
-  {vsn, "0.4.9"},
+  {vsn, "0.4.10"},
   {registered, []},
   {applications, [kernel, stdlib]}
  ]}.
