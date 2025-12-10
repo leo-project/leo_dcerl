@@ -53,7 +53,7 @@ case "$1" in
         fi
         cd libcutil
         if [ ! -d build ]; then
-            (mkdir build && cd build && cmake ..)
+            (mkdir build && cd build && cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..)
         fi
         (cd build && $MAKE)
 

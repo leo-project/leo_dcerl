@@ -15,7 +15,7 @@ init_source() ->
 data_block({SourceSz, Source}, BlockSize) ->
     case SourceSz - BlockSize > 0 of
         true ->
-            Offset = random:uniform(SourceSz - BlockSize),
+            Offset = rand:uniform(SourceSz - BlockSize),
             <<_:Offset/bytes, Slice:BlockSize/bytes, _Rest/binary>> = Source,
             Slice;
         false ->

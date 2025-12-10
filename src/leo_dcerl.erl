@@ -2,7 +2,8 @@
 %%
 %% Leo Disk Cache Library for Erlang(leo_dcerl)
 %%
-%% Copyright (c) 2012-2015 Rakuten, Inc.
+%% Copyright (c) 2012-2018 Rakuten, Inc.
+%% Copyright (c) 2019-2025 Lions Data, Ltd.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -885,16 +886,16 @@ journal_rebuild_write_line(_DState, not_found) ->
 %% @private
 filename_bin2str(BinKey) when is_binary(BinKey) ->
     StrKey = binary_to_list(BinKey),
-    http_uri:encode(StrKey).
+    uri_string:quote(StrKey).
 filename_str2bin(StrKey) when is_list(StrKey) ->
-    DecStr = http_uri:decode(StrKey),
+    DecStr = uri_string:unquote(StrKey),
     list_to_binary(DecStr).
 
 
 %% @private
 data_filename(DataDir, BinKey) ->
     StrKey = binary_to_list(BinKey),
-    filename:join(DataDir, http_uri:encode(StrKey)).
+    filename:join(DataDir, uri_string:quote(StrKey)).
 
 
 %% @private

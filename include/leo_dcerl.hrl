@@ -20,13 +20,9 @@
 %%
 %%======================================================================
 
--ifdef(namespaced_types).
+%% OTP 17+ uses namespaced types
 -type dcerl_dict() :: dict:dict().
 -type dcerl_set() :: sets:set().
--else.
--type dcerl_dict() :: dict().
--type dcerl_set() :: set().
--endif.
 
 -record(cache_meta, {
           size = 0  :: non_neg_integer(),
