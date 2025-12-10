@@ -12,3 +12,8 @@ leo_dcerl.dot
 leo_dcerl.png
 .rebar/
 doc/
+_build/
+rebar.lock
+c_src/lru_nif.d
+.github/
+journal/
